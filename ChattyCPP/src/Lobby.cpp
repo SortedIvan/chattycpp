@@ -12,8 +12,9 @@ void DrawAllMessages(std::vector<sf::Text>& all_messages, sf::RenderWindow& lobb
 void SendMessage(std::vector<std::string>& all_messages, std::vector<sf::Text>& all_texts, std::string& current_message, sf::Event event, int& max_size_allowed, sf::Font& font, sf::Text& current_message_text);
 void OnTextEntered(sf::Event event, std::string& current_text_message, int max_size_allowed, sf::Text& current_message_text);
 
-bool Lobby::HostLobby(std::string lobby_ip, std::string lobby_port, std::string lobby_name, std::string hosted_by, int max_participants) {
+bool Lobby::HostLobby(std::string lobby_ip, std::string lobby_port, std::string lobby_name, std::string hosted_by, int max_participants, ENetHost* server, ENetEvent& enet_event) {
  
+
 	sf::RenderWindow lobby_window(sf::VideoMode(800, 1000), lobby_name);
 	sf::Event event;
 	Utility utility;
@@ -49,6 +50,34 @@ bool Lobby::HostLobby(std::string lobby_ip, std::string lobby_port, std::string 
 	int max_message_size = 80; // CHARACTERS ALLOWED IN MESSAGE
 
 	while (lobby_window.isOpen()) {
+
+
+		while (enet_host_service(server, &enet_event, 1000) > 0)
+		{
+			switch (enet_event.type)
+			{
+				case ENET_EVENT_TYPE_CONNECT:
+					printf("A new client connected from: %x:%u.\n",
+						enet_event.peer->address.host,
+						enet_event.peer->address.port);
+					std::cout << "HELLO NEW CLIENT!!" << std::endl;
+					break;
+				case ENET_EVENT_TYPE_RECEIVE:
+					printf("A packet of length %u containing %s was received from %s on channel %u.\n",
+						enet_event.packet->dataLength,
+						enet_event.packet->data,
+						enet_event.peer->data,
+						enet_event.channelID);
+					break;
+				case ENET_EVENT_TYPE_DISCONNECT:
+					printf("%x:%u disconnected.\n",
+						enet_event.peer->address.host,
+						enet_event.peer->address.port,
+						enet_event.peer->data = NULL
+					);
+			}
+		}
+
 
 		// DRAWING
 		lobby_window.clear(sf::Color::Black);
@@ -83,17 +112,26 @@ bool Lobby::HostLobby(std::string lobby_ip, std::string lobby_port, std::string 
 		}
 	}
 
+	enet_host_destroy(server);
+
 	return false;
 
 }
 
-bool Lobby::JoinLobby(std::string lobby_ip, std::string lobby_port, std::string username, ENetHost& client, ENetEvent& enet_event, ENetPeer& peer){
+bool Lobby::JoinLobby(std::string lobby_ip, std::string lobby_port, std::string username, ENetHost* client, ENetEvent& enet_event, ENetPeer* peer){
 
-	sf::RenderWindow lobby_window(sf::VideoMode(800, 1000), lobby_name);
+	sf::RenderWindow lobby_window(sf::VideoMode(800, 1000), username);
 	sf::Event event;
 	Utility utility;
 	sf::Font text_font;
+
+	#ifdef NDEBUG
+	utility.CheckFontLoaded(text_font, "8bitfont.ttf");
+	#else
 	utility.CheckFontLoaded(text_font, "../8bitfont.ttf");
+	#endif
+
+	
 
 
 	sf::Text current_message_text;
@@ -127,7 +165,7 @@ bool Lobby::JoinLobby(std::string lobby_ip, std::string lobby_port, std::string 
 
 		// MAIN LOOP
 
-		while (enet_host_service(client, &enet_event, 1000) > 0) 
+		while (enet_host_service(client, &enet_event, 200) > 0) 
 		{
 			switch (enet_event.type)
 			{
@@ -179,7 +217,7 @@ bool Lobby::JoinLobby(std::string lobby_ip, std::string lobby_port, std::string 
 
 	while (enet_host_service(client, &enet_event, 3000) > 0) 
 	{
-		switch (event.type) 
+		switch (enet_event.type)
 		{
 			case ENET_EVENT_TYPE_RECEIVE:
 				enet_packet_destroy(enet_event.packet);
@@ -191,7 +229,7 @@ bool Lobby::JoinLobby(std::string lobby_ip, std::string lobby_port, std::string 
 	}
 
 
-	return false;
+	return EXIT_SUCCESS;
 
 }
 

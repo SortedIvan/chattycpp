@@ -5,15 +5,26 @@
 #include <iostream>
 #include <enet/enet.h>
 #include "Lobby.h"
-
+#include "Client.h"
+#include "Server.h"
 
 int main() {
 
-
-
-
+	Client client;
+	Server server;
 	Lobby lobby;
-	lobby.HostLobby("212.187.55.58", "7777", "First Chat Lobby", "Ivan", 5);
+
+	int choice;
+	std::cout << "Type 0 for server, 1 for client" << std::endl;
+	std::cin >> choice;
+
+	switch (choice) {
+
+		case 0:
+			server.RunServer();
+		case 1:
+			client.ConnectClient();
+	}
 
 	return 0;
 }

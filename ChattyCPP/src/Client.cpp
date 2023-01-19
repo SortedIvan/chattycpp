@@ -5,6 +5,9 @@
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "Winmm.lib")
 
+#include <chrono>
+#include <thread>
+
 int Client::ConnectClient() {
 
 	Lobby lobby;
@@ -31,7 +34,7 @@ int Client::ConnectClient() {
 	ENetPeer* peer;
 
 	enet_address_set_host(&adress, "127.0.0.1");
-	adress.port = 6969;
+	adress.port = 7777;
 
 	peer = enet_host_connect(client, &adress, 1, 0);
 
@@ -49,11 +52,12 @@ int Client::ConnectClient() {
 	{
 		enet_peer_reset(peer);
 		std::cout << "Connection unsuccesful" << std::endl;
+		std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 		return EXIT_SUCCESS;
 	}
 
 	// MAIN LOOP
 
-	lobby.JoinLobby("127.0.0.1", "7777", "Ivan");
+	lobby.JoinLobby("127.0.0.1", "7777", "Ivan",client, event, peer);
 
 }
