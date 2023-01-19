@@ -145,13 +145,17 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Client.cpp" />
     <ClCompile Include="src\Lobby.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\Server.cpp" />
     <ClCompile Include="src\User.cpp" />
     <ClCompile Include="src\Utility.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\Client.h" />
     <ClInclude Include="src\Lobby.h" />
+    <ClInclude Include="src\Server.h" />
     <ClInclude Include="src\User.h" />
     <ClInclude Include="src\Utility.h" />
   </ItemGroup>

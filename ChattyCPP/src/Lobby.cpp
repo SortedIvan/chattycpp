@@ -2,7 +2,10 @@
 #include "Utility.h"
 #include <string>
 #include <iostream>
+#include <enet/enet.h>
 
+#pragma comment(lib, "ws2_32.lib")
+#pragma comment(lib, "Winmm.lib")
 
 
 void DrawAllMessages(std::vector<sf::Text>& all_messages, sf::RenderWindow& lobby_window);
@@ -83,6 +86,116 @@ bool Lobby::HostLobby(std::string lobby_ip, std::string lobby_port, std::string 
 	return false;
 
 }
+
+bool Lobby::JoinLobby(std::string lobby_ip, std::string lobby_port, std::string username, ENetHost& client, ENetEvent& enet_event, ENetPeer& peer){
+
+	sf::RenderWindow lobby_window(sf::VideoMode(800, 1000), lobby_name);
+	sf::Event event;
+	Utility utility;
+	sf::Font text_font;
+	utility.CheckFontLoaded(text_font, "../8bitfont.ttf");
+
+
+	sf::Text current_message_text;
+	std::string current_text_message;
+
+
+	sf::RenderTexture bgTex;
+	bgTex.create(800, 1000);
+
+	sf::RectangleShape chat_box;
+	chat_box.setSize(sf::Vector2f(700.f, 80.f));
+	chat_box.setPosition(sf::Vector2f(50.f, 900.f));
+	chat_box.setOutlineColor(sf::Color::White);
+	bgTex.draw(chat_box);
+	bgTex.display();
+
+	sf::Sprite background_overlay(bgTex.getTexture());
+
+	std::vector<sf::Text> all_messages_text;
+	std::vector<std::string> all_messages;
+
+	current_message_text.setString("TEST");
+	current_message_text.setFont(text_font);
+	current_message_text.setFillColor(sf::Color::Black);
+
+	current_message_text.setPosition(chat_box.getPosition());
+
+	int max_message_size = 80; // CHARACTERS ALLOWED IN MESSAGE
+
+	while (lobby_window.isOpen()) {
+
+		// MAIN LOOP
+
+		while (enet_host_service(client, &enet_event, 1000) > 0) 
+		{
+			switch (enet_event.type)
+			{
+				case ENET_EVENT_TYPE_RECEIVE:
+					printf("A packet of length %u containing %s was received from %s on channel %u.\n",
+						enet_event.packet->dataLength,
+						enet_event.packet->data,
+						enet_event.peer->data,
+						enet_event.channelID);
+					break;
+			}
+
+		}
+
+		// DRAWING
+		lobby_window.clear(sf::Color::Black);
+		lobby_window.draw(background_overlay);
+		lobby_window.draw(current_message_text);
+
+		DrawAllMessages(all_messages_text, lobby_window);
+
+
+		// DISPLAYING
+		lobby_window.display();
+
+		while (lobby_window.pollEvent(event)) {
+
+			if (event.type == sf::Event::Closed) {
+
+				lobby_window.close();
+				return true;
+			}
+
+			if (event.type == sf::Event::KeyReleased)
+			{
+				SendMessage(all_messages, all_messages_text, current_text_message, event, max_message_size, text_font, current_message_text);
+			}
+
+			if (event.type == sf::Event::TextEntered) {
+				if (event.text.unicode < 128)
+				{
+					OnTextEntered(event, current_text_message, max_message_size, current_message_text);
+				}
+			}
+		}
+	}
+
+	enet_peer_disconnect(peer, 0);
+
+	while (enet_host_service(client, &enet_event, 3000) > 0) 
+	{
+		switch (event.type) 
+		{
+			case ENET_EVENT_TYPE_RECEIVE:
+				enet_packet_destroy(enet_event.packet);
+				break;
+			case ENET_EVENT_TYPE_DISCONNECT:
+				puts("Disconnection succeeeded");
+				break;
+		}
+	}
+
+
+	return false;
+
+}
+
+
 
 void DrawAllMessages(std::vector<sf::Text>& all_messages, sf::RenderWindow& lobby_window) {
 

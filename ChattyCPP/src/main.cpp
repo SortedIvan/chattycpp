@@ -10,11 +10,7 @@
 int main() {
 
 
-	if (enet_initialize() != 0)
-	{
-		fprintf(stderr, "An error occured while initializing enet! \n");
-		return EXIT_FAILURE;
-	}
+
 
 	Lobby lobby;
 	lobby.HostLobby("212.187.55.58", "7777", "First Chat Lobby", "Ivan", 5);
