@@ -8,7 +8,7 @@
 #include <chrono>
 #include <thread>
 
-int Client::ConnectClient() {
+int Client::ConnectClient(const char* server_ip, int server_port) {
 
 	Lobby lobby;
 	
@@ -33,8 +33,8 @@ int Client::ConnectClient() {
 	ENetEvent event; 
 	ENetPeer* peer;
 
-	enet_address_set_host(&adress, "127.0.0.1");
-	adress.port = 7777;
+	enet_address_set_host(&adress, server_ip);
+	adress.port = server_port;
 
 	peer = enet_host_connect(client, &adress, 1, 0);
 

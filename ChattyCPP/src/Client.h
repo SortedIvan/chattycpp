@@ -1,11 +1,8 @@
 #pragma once
-
+#include <string>
 
 class Client {
 	public:
-		int ConnectClient();
-
-
-
+		int ConnectClient(const char* server_ip, int server_port);
 
 };

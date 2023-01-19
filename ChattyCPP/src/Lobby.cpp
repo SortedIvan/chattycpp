@@ -3,14 +3,23 @@
 #include <string>
 #include <iostream>
 #include <enet/enet.h>
+#include <windows.h>
 
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "Winmm.lib")
 
 
+
+std::string GetCurrentDirectory();
 void DrawAllMessages(std::vector<sf::Text>& all_messages, sf::RenderWindow& lobby_window);
-void SendMessage(std::vector<std::string>& all_messages, std::vector<sf::Text>& all_texts, std::string& current_message, sf::Event event, int& max_size_allowed, sf::Font& font, sf::Text& current_message_text);
+void SendMessage(std::vector<std::string>& all_messages, std::vector<sf::Text>& all_texts, std::string& current_message, sf::Event event, int& max_size_allowed, sf::Font& font, sf::Text& current_message_text, ENetPeer* peer);
 void OnTextEntered(sf::Event event, std::string& current_text_message, int max_size_allowed, sf::Text& current_message_text);
+void SendPacket(ENetPeer* peer, const char* data);
+void SendMessageServer(std::vector<std::string>& all_messages, std::vector<sf::Text>& all_texts, std::string& current_message, sf::Event event, int& max_size_allowed, sf::Font& font, sf::Text& current_message_text);
+
+std::string converter(uint8_t* str);
+void BroadcastPacket(ENetHost* host, const char* data);
+void ReceiveMessage(std::vector<std::string>& all_messages, std::vector<sf::Text>& all_texts, std::string received_message, sf::Font& font);
 
 bool Lobby::HostLobby(std::string lobby_ip, std::string lobby_port, std::string lobby_name, std::string hosted_by, int max_participants, ENetHost* server, ENetEvent& enet_event) {
  
@@ -19,7 +28,7 @@ bool Lobby::HostLobby(std::string lobby_ip, std::string lobby_port, std::string 
 	sf::Event event;
 	Utility utility;
 	sf::Font text_font;
-	utility.CheckFontLoaded(text_font, "../8bitfont.ttf");
+	utility.CheckFontLoaded(text_font, GetCurrentDirectory() + "/8bitfont.ttf");
 
 
 	sf::Text current_message_text;
@@ -54,13 +63,14 @@ bool Lobby::HostLobby(std::string lobby_ip, std::string lobby_port, std::string 
 
 		while (enet_host_service(server, &enet_event, 1000) > 0)
 		{
+			std::string data_string;
+			
 			switch (enet_event.type)
 			{
 				case ENET_EVENT_TYPE_CONNECT:
 					printf("A new client connected from: %x:%u.\n",
 						enet_event.peer->address.host,
 						enet_event.peer->address.port);
-					std::cout << "HELLO NEW CLIENT!!" << std::endl;
 					break;
 				case ENET_EVENT_TYPE_RECEIVE:
 					printf("A packet of length %u containing %s was received from %s on channel %u.\n",
@@ -68,6 +78,13 @@ bool Lobby::HostLobby(std::string lobby_ip, std::string lobby_port, std::string 
 						enet_event.packet->data,
 						enet_event.peer->data,
 						enet_event.channelID);
+
+					// broadcast message to other peers connected to server when something is received
+					data_string = reinterpret_cast<char*>(enet_event.packet->data);
+					
+					BroadcastPacket(server, data_string.c_str());
+
+
 					break;
 				case ENET_EVENT_TYPE_DISCONNECT:
 					printf("%x:%u disconnected.\n",
@@ -100,7 +117,7 @@ bool Lobby::HostLobby(std::string lobby_ip, std::string lobby_port, std::string 
 
 			if (event.type == sf::Event::KeyReleased) 
 			{
-				SendMessage(all_messages, all_messages_text, current_text_message, event, max_message_size, text_font, current_message_text);
+				SendMessageServer(all_messages, all_messages_text, current_text_message, event, max_message_size, text_font, current_message_text);
 			}
 
 			if (event.type == sf::Event::TextEntered) {
@@ -124,12 +141,8 @@ bool Lobby::JoinLobby(std::string lobby_ip, std::string lobby_port, std::string 
 	sf::Event event;
 	Utility utility;
 	sf::Font text_font;
-
-	#ifdef NDEBUG
-	utility.CheckFontLoaded(text_font, "8bitfont.ttf");
-	#else
-	utility.CheckFontLoaded(text_font, "../8bitfont.ttf");
-	#endif
+	
+	utility.CheckFontLoaded(text_font, GetCurrentDirectory() + "/8bitfont.ttf");
 
 	
 
@@ -175,7 +188,15 @@ bool Lobby::JoinLobby(std::string lobby_ip, std::string lobby_port, std::string 
 						enet_event.packet->data,
 						enet_event.peer->data,
 						enet_event.channelID);
+
+					// DATA RECEIVED HERE, ADD MESSAGE TO MESSAGE POOl
+					std::string received_message_string = converter(enet_event.packet->data);
+					ReceiveMessage(all_messages, all_messages_text, received_message_string, text_font);
+
+
 					break;
+
+
 			}
 
 		}
@@ -201,7 +222,7 @@ bool Lobby::JoinLobby(std::string lobby_ip, std::string lobby_port, std::string 
 
 			if (event.type == sf::Event::KeyReleased)
 			{
-				SendMessage(all_messages, all_messages_text, current_text_message, event, max_message_size, text_font, current_message_text);
+				SendMessage(all_messages, all_messages_text, current_text_message, event, max_message_size, text_font, current_message_text,peer);
 			}
 
 			if (event.type == sf::Event::TextEntered) {
@@ -255,7 +276,19 @@ void DrawAllMessages(std::vector<sf::Text>& all_messages, sf::RenderWindow& lobb
 }
 
 
-void SendMessage(std::vector<std::string>& all_messages,std::vector<sf::Text>& all_texts, std::string& current_message, sf::Event event, int& max_size_allowed, sf::Font& font, sf::Text& current_message_text) {
+void ReceiveMessage(std::vector<std::string>& all_messages, std::vector<sf::Text>& all_texts, std::string received_message, sf::Font& font) {
+	sf::Text message_text;
+	message_text.setFont(font);
+	// ADD TO TEXT POOL
+	message_text.setString(received_message);
+	// ADD TO MESSAGE POOL
+	all_messages.push_back(received_message);
+	all_texts.push_back(message_text);
+
+
+}
+
+void SendMessage(std::vector<std::string>& all_messages,std::vector<sf::Text>& all_texts, std::string& current_message, sf::Event event, int& max_size_allowed, sf::Font& font, sf::Text& current_message_text, ENetPeer* peer) {
 
 	if (current_message.size() > max_size_allowed) {
 		return;
@@ -275,7 +308,47 @@ void SendMessage(std::vector<std::string>& all_messages,std::vector<sf::Text>& a
 		std::cout << all_messages.size() << std::endl;
 
 		// ---------- SEND HERE ---------
-		// 
+		
+		const char* data = current_message.c_str();
+
+
+		SendPacket(peer, data);
+		
+
+		// -------------------
+
+		// Make current message empty after
+		current_message = "";
+		current_message_text.setString("");
+
+	}
+}
+
+void SendMessageServer(std::vector<std::string>& all_messages, std::vector<sf::Text>& all_texts, std::string& current_message, sf::Event event, int& max_size_allowed, sf::Font& font, sf::Text& current_message_text) {
+
+	if (current_message.size() > max_size_allowed) {
+		return;
+	}
+
+	if (event.key.code == sf::Keyboard::Enter) {
+
+		sf::Text message_text;
+		message_text.setFont(font);
+
+		// ADD TO TEXT POOL
+		message_text.setString(current_message);
+		// ADD TO MESSAGE POOL
+		all_messages.push_back(current_message);
+		all_texts.push_back(message_text);
+
+		std::cout << all_messages.size() << std::endl;
+
+		// ---------- SEND HERE ---------
+
+
+		//SendPacket(peer, current_message);
+
+
 		// -------------------
 
 		// Make current message empty after
@@ -296,4 +369,29 @@ void OnTextEntered(sf::Event event, std::string& current_text_message, int max_s
 		std::cout << current_text_message << std::endl;
 		current_message_text.setString(current_text_message);
 	}
+}
+
+void SendPacket(ENetPeer* peer, const char* data) 
+{
+	ENetPacket* packet = enet_packet_create(data, strlen(data) + 1, ENET_PACKET_FLAG_RELIABLE);
+	enet_peer_send(peer, 0, packet);
+}
+
+void BroadcastPacket(ENetHost* host, const char* data) 
+{
+	ENetPacket* packet = enet_packet_create(data, strlen(data) + 1, ENET_PACKET_FLAG_RELIABLE);
+	enet_host_broadcast(host, 0, packet);
+}
+
+std::string GetCurrentDirectory()
+{
+	char buffer[MAX_PATH];
+	GetModuleFileNameA(NULL, buffer, MAX_PATH);
+	std::string::size_type pos = std::string(buffer).find_last_of("\\/");
+
+	return std::string(buffer).substr(0, pos);
+}
+
+std::string converter(uint8_t* str) {
+	return std::string((char*)str);
 }
