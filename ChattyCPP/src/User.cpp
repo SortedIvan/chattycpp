@@ -11,7 +11,7 @@ std::string User::GetUsername() {
 	return username;
 }
 
-std::string User::SetUsername(std::string newusername) {
+void User::SetUsername(std::string newusername) {
 	username = newusername;
 }
 

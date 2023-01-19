@@ -4,9 +4,11 @@
 #include  <SFML/Graphics.hpp>
 #include <iostream>
 #include <enet/enet.h>
+#include "Lobby.h"
 
 
-int main(int argc, char** argv) {
+int main() {
+
 
 	if (enet_initialize() != 0)
 	{
@@ -14,21 +16,8 @@ int main(int argc, char** argv) {
 		return EXIT_FAILURE;
 	}
 
-	sf::RenderWindow window(sf::VideoMode(800, 600), "Not Tetris");
-
-	sf::Event event;
-
-	while (window.isOpen()) {
-
-		while (window.pollEvent(event)) {
-
-			if (event.type == sf::Event::Closed) {
-
-				window.close();
-			}
-		}
-	}
+	Lobby lobby;
+	lobby.HostLobby("212.187.55.58", "7777", "First Chat Lobby", "Ivan", 5);
 
 	return 0;
-
 }
