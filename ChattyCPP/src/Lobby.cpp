@@ -6,18 +6,20 @@
 
 
 void DrawAllMessages(std::vector<sf::Text>& all_messages, sf::RenderWindow& lobby_window);
-void SendMessage(std::vector<std::string>& all_messages, std::vector<sf::Text>& all_texts, std::string& current_message, sf::Event event, int& max_size_allowed, sf::Font& font);
-void OnTextEntered(sf::Event event, std::string& current_text_message, int max_size_allowed);
+void SendMessage(std::vector<std::string>& all_messages, std::vector<sf::Text>& all_texts, std::string& current_message, sf::Event event, int& max_size_allowed, sf::Font& font, sf::Text& current_message_text);
+void OnTextEntered(sf::Event event, std::string& current_text_message, int max_size_allowed, sf::Text& current_message_text);
 
 bool Lobby::HostLobby(std::string lobby_ip, std::string lobby_port, std::string lobby_name, std::string hosted_by, int max_participants) {
  
 	sf::RenderWindow lobby_window(sf::VideoMode(800, 1000), lobby_name);
 	sf::Event event;
-	sf::Text message_text;
 	Utility utility;
 	sf::Font text_font;
 	utility.CheckFontLoaded(text_font, "../8bitfont.ttf");
 
+
+	sf::Text current_message_text;
+	std::string current_text_message;
 
 
 	sf::RenderTexture bgTex;
@@ -35,22 +37,23 @@ bool Lobby::HostLobby(std::string lobby_ip, std::string lobby_port, std::string 
 	std::vector<sf::Text> all_messages_text;
 	std::vector<std::string> all_messages;
 
-	message_text.setString("TEST");
-	message_text.setFont(text_font);
-	message_text.setColor(sf::Color::Black);
-	message_text.setOrigin(chat_box.getOrigin());
+	current_message_text.setString("TEST");
+	current_message_text.setFont(text_font);
+	current_message_text.setFillColor(sf::Color::Black);
+
+	current_message_text.setPosition(chat_box.getPosition());
 
 	int max_message_size = 80; // CHARACTERS ALLOWED IN MESSAGE
 
 	while (lobby_window.isOpen()) {
 
-		std::cout << "Window is open" << std::endl;
-
 		// DRAWING
 		lobby_window.clear(sf::Color::Black);
-		lobby_window.draw(message_text);
 		lobby_window.draw(background_overlay);
-		lobby_window.draw(current_message);
+		lobby_window.draw(current_message_text);
+
+		DrawAllMessages(all_messages_text, lobby_window);
+
 
 		// DISPLAYING
 		lobby_window.display();
@@ -65,13 +68,13 @@ bool Lobby::HostLobby(std::string lobby_ip, std::string lobby_port, std::string 
 
 			if (event.type == sf::Event::KeyReleased) 
 			{
-
+				SendMessage(all_messages, all_messages_text, current_text_message, event, max_message_size, text_font, current_message_text);
 			}
 
 			if (event.type == sf::Event::TextEntered) {
 				if (event.text.unicode < 128) 
 				{
-
+					OnTextEntered(event, current_text_message, max_message_size, current_message_text);
 				}
 			}
 		}
@@ -83,25 +86,27 @@ bool Lobby::HostLobby(std::string lobby_ip, std::string lobby_port, std::string 
 
 void DrawAllMessages(std::vector<sf::Text>& all_messages, sf::RenderWindow& lobby_window) {
 
-	float positioning_multiplier = 20.f;
+	float positioning_multiplier = 30.f;
 
-	for (int i = 0; i < all_messages; i++) {
+	for (int i = 0; i < all_messages.size(); i++) {
 
 		if (i == 0) {
-			all_messages[i].setPosition(sf::Vector2f(50.f, 30.f));
+			all_messages[i].setPosition(sf::Vector2f(50.f, positioning_multiplier));
+			all_messages[i].setFillColor(sf::Color::White);
 			lobby_window.draw(all_messages[i]);
 			continue;
 		}
-		
+
+		all_messages[i].setFillColor(sf::Color::White);
 		all_messages[i].setPosition(sf::Vector2f(50.f, 30.f + (i * positioning_multiplier)));
 		lobby_window.draw(all_messages[i]);
 	}
 }
 
 
-void SendMessage(std::vector<std::string>& all_messages,std::vector<sf::Text>& all_texts, std::string& current_message, sf::Event event, int& max_size_allowed, sf::Font& font) {
+void SendMessage(std::vector<std::string>& all_messages,std::vector<sf::Text>& all_texts, std::string& current_message, sf::Event event, int& max_size_allowed, sf::Font& font, sf::Text& current_message_text) {
 
-	if (message.size() > max_size_allowed) {
+	if (current_message.size() > max_size_allowed) {
 		return;
 	}
 
@@ -114,6 +119,9 @@ void SendMessage(std::vector<std::string>& all_messages,std::vector<sf::Text>& a
 		message_text.setString(current_message);
 		// ADD TO MESSAGE POOL
 		all_messages.push_back(current_message);
+		all_texts.push_back(message_text);
+
+		std::cout << all_messages.size() << std::endl;
 
 		// ---------- SEND HERE ---------
 		// 
@@ -121,11 +129,12 @@ void SendMessage(std::vector<std::string>& all_messages,std::vector<sf::Text>& a
 
 		// Make current message empty after
 		current_message = "";
+		current_message_text.setString("");
 
 	}
 }
 
-void OnTextEntered(sf::Event event, std::string& current_text_message, int max_size_allowed) {
+void OnTextEntered(sf::Event event, std::string& current_text_message, int max_size_allowed, sf::Text& current_message_text) {
 	if (event.text.unicode != '\b' && event.text.unicode != 13 && event.text.unicode != '37' && event.text.unicode != '39' && !sf::Keyboard::isKeyPressed(sf::Keyboard::LControl)) 
 	{
 		// If the next entered character exceeds the set limit, don't add the character
@@ -133,5 +142,7 @@ void OnTextEntered(sf::Event event, std::string& current_text_message, int max_s
 			return;
 		}
 		current_text_message += event.text.unicode;
+		std::cout << current_text_message << std::endl;
+		current_message_text.setString(current_text_message);
 	}
 }
