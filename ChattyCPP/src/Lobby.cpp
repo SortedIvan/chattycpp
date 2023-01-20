@@ -1,5 +1,6 @@
 #include "Lobby.h"
 #include "Utility.h"
+#include "User.h"
 #include <string>
 #include <iostream>
 #include <enet/enet.h>
@@ -29,7 +30,6 @@ bool Lobby::HostLobby(std::string lobby_ip, std::string lobby_port, std::string 
 	Utility utility;
 	sf::Font text_font;
 	utility.CheckFontLoaded(text_font, GetCurrentDirectory() + "/8bitfont.ttf");
-
 
 	sf::Text current_message_text;
 	std::string current_text_message;
@@ -296,16 +296,19 @@ void SendMessage(std::vector<std::string>& all_messages,std::vector<sf::Text>& a
 
 	if (event.key.code == sf::Keyboard::Enter) {
 
-		sf::Text message_text;
-		message_text.setFont(font);
+		
 
-		// ADD TO TEXT POOL
-		message_text.setString(current_message);
-		// ADD TO MESSAGE POOL
-		all_messages.push_back(current_message);
-		all_texts.push_back(message_text);
-
-		std::cout << all_messages.size() << std::endl;
+		// WE DO NOT ADD TO TEXT POOL AND SAVE MESSAGE
+		// Reason: the message is broadcasted to all peers, therefore it should not be saved here
+		
+		//sf::Text message_text;
+		//message_text.setFont(font);
+		//// ADD TO TEXT POOL
+		//message_text.setString(current_message);
+		//// ADD TO MESSAGE POOL
+		//all_messages.push_back(current_message);
+		//all_texts.push_back(message_text);
+		//std::cout << all_messages.size() << std::endl;
 
 		// ---------- SEND HERE ---------
 		

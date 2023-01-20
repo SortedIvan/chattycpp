@@ -22,8 +22,7 @@ int Server::RunServer() {
 	ENetHost* server;
 
 	address.host = ENET_HOST_ANY;
-	//enet_address_set_host(&address, "212.187.55.58");
-
+	enet_address_set_host(&address, "127.0.0.1");
 	address.port = 7777;
 
 
