@@ -8,7 +8,9 @@
 #include <chrono>
 #include <thread>
 
-int Client::ConnectClient(const char* server_ip, int server_port) {
+void SendUsername(ENetPeer* peer, const char* data);
+
+int Client::ConnectClient(const char* server_ip, int server_port, std::string username) {
 
 	Lobby lobby;
 	
@@ -56,8 +58,15 @@ int Client::ConnectClient(const char* server_ip, int server_port) {
 		return EXIT_SUCCESS;
 	}
 
+	std::string username_join = "connected_user|" + username;
 	// MAIN LOOP
-
+	SendUsername(peer, username_join.c_str());
 	lobby.JoinLobby("127.0.0.1", "7777", "Ivan",client, event, peer);
 
+}
+
+void SendUsername(ENetPeer* peer, const char* data)
+{
+	ENetPacket* packet = enet_packet_create(data, strlen(data) + 1, ENET_PACKET_FLAG_RELIABLE);
+	enet_peer_send(peer, 0, packet);
 }

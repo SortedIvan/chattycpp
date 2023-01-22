@@ -18,6 +18,7 @@ int main() {
 
 	std::string server_ip;
 	int server_port;
+	std::string username;
 
 	int choice;
 	std::cout << "Type 0 for server, 1 for client" << std::endl;
@@ -35,7 +36,10 @@ int main() {
 			std::cout << "Enter server port: " << std::endl;
 			std::cin >> server_port;
 
-			client.ConnectClient(server_ip.c_str(),server_port);
+			std::cout << "Enter username: " << std::endl;
+			std::cin >> username;
+
+			client.ConnectClient(server_ip.c_str(), server_port, username);
 	}
 
 	return 0;

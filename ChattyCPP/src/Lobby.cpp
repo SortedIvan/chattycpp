@@ -1,3 +1,6 @@
+#pragma comment(lib, "ws2_32.lib")
+#pragma comment(lib, "Winmm.lib")
+
 #include "Lobby.h"
 #include "Utility.h"
 #include "User.h"
@@ -5,9 +8,7 @@
 #include <iostream>
 #include <enet/enet.h>
 #include <windows.h>
-
-#pragma comment(lib, "ws2_32.lib")
-#pragma comment(lib, "Winmm.lib")
+using std::map;
 
 
 
@@ -34,7 +35,6 @@ bool Lobby::HostLobby(std::string lobby_ip, std::string lobby_port, std::string 
 	sf::Text current_message_text;
 	std::string current_text_message;
 
-
 	sf::RenderTexture bgTex;
 	bgTex.create(800, 1000);
 
@@ -58,19 +58,32 @@ bool Lobby::HostLobby(std::string lobby_ip, std::string lobby_port, std::string 
 
 	int max_message_size = 80; // CHARACTERS ALLOWED IN MESSAGE
 
+	int client_id_counter = 0;
+	std::map<int*, std::string> users;
+
+
 	while (lobby_window.isOpen()) {
 
 
 		while (enet_host_service(server, &enet_event, 1000) > 0)
 		{
 			std::string data_string;
-			
+			std::string user_has_connected = "connected_user|";
+			std::string temp_username; 
+			std::string message;
+
 			switch (enet_event.type)
 			{
 				case ENET_EVENT_TYPE_CONNECT:
 					printf("A new client connected from: %x:%u.\n",
 						enet_event.peer->address.host,
 						enet_event.peer->address.port);
+
+					enet_event.peer->data = new int(client_id_counter); // new client joins, set their id
+					users.insert({ static_cast<int*>(enet_event.peer->data), "" });
+
+					client_id_counter++;
+
 					break;
 				case ENET_EVENT_TYPE_RECEIVE:
 					printf("A packet of length %u containing %s was received from %s on channel %u.\n",
@@ -79,10 +92,25 @@ bool Lobby::HostLobby(std::string lobby_ip, std::string lobby_port, std::string 
 						enet_event.peer->data,
 						enet_event.channelID);
 
-					// broadcast message to other peers connected to server when something is received
 					data_string = reinterpret_cast<char*>(enet_event.packet->data);
+
+					if (data_string.find(user_has_connected) != std::string::npos) {
+						// User initial connection
+						users.insert_or_assign(static_cast<int*>(enet_event.peer->data), data_string.replace(data_string.find(user_has_connected), user_has_connected.length(), ""));
+						temp_username = users[static_cast<int*>(enet_event.peer->data)];
+						temp_username = temp_username + " has connected! Say hi!";
+						BroadcastPacket(server, temp_username.c_str());
+						break;
+					}
+
+
+					temp_username = users[static_cast<int*>(enet_event.peer->data)];
+
+					message = temp_username + " : " + data_string;
 					
-					BroadcastPacket(server, data_string.c_str());
+
+					// broadcast message to other peers connected to server when something is received
+					BroadcastPacket(server, message.c_str());
 
 
 					break;
