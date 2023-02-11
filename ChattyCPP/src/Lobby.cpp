@@ -1,6 +1,5 @@
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "Winmm.lib")
-
 #include "Lobby.h"
 #include "Utility.h"
 #include "User.h"
@@ -10,18 +9,17 @@
 #include <windows.h>
 using std::map;
 
-
-
+//TODO: remove all of the function definitions and add them to a seperate class
 std::string GetCurrentDirectory();
 void DrawAllMessages(std::vector<sf::Text>& all_messages, sf::RenderWindow& lobby_window);
 void SendMessage(std::vector<std::string>& all_messages, std::vector<sf::Text>& all_texts, std::string& current_message, sf::Event event, int& max_size_allowed, sf::Font& font, sf::Text& current_message_text, ENetPeer* peer);
 void OnTextEntered(sf::Event event, std::string& current_text_message, int max_size_allowed, sf::Text& current_message_text);
 void SendPacket(ENetPeer* peer, const char* data);
 void SendMessageServer(std::vector<std::string>& all_messages, std::vector<sf::Text>& all_texts, std::string& current_message, sf::Event event, int& max_size_allowed, sf::Font& font, sf::Text& current_message_text);
-
 std::string converter(uint8_t* str);
 void BroadcastPacket(ENetHost* host, const char* data);
 void ReceiveMessage(std::vector<std::string>& all_messages, std::vector<sf::Text>& all_texts, std::string received_message, sf::Font& font);
+bool DeleteUserByUsername(std::map<int*, std::string>& users, std::string username);
 
 bool Lobby::HostLobby(std::string lobby_ip, std::string lobby_port, std::string lobby_name, std::string hosted_by, int max_participants, ENetHost* server, ENetEvent& enet_event) {
  
@@ -53,11 +51,9 @@ bool Lobby::HostLobby(std::string lobby_ip, std::string lobby_port, std::string 
 	current_message_text.setString("TEST");
 	current_message_text.setFont(text_font);
 	current_message_text.setFillColor(sf::Color::Black);
-
 	current_message_text.setPosition(chat_box.getPosition());
 
 	int max_message_size = 80; // CHARACTERS ALLOWED IN MESSAGE
-
 	int client_id_counter = 0;
 	std::map<int*, std::string> users;
 
@@ -81,7 +77,6 @@ bool Lobby::HostLobby(std::string lobby_ip, std::string lobby_port, std::string 
 
 					enet_event.peer->data = new int(client_id_counter); // new client joins, set their id
 					users.insert({ static_cast<int*>(enet_event.peer->data), "" });
-
 					client_id_counter++;
 
 					break;
@@ -100,12 +95,12 @@ bool Lobby::HostLobby(std::string lobby_ip, std::string lobby_port, std::string 
 						temp_username = users[static_cast<int*>(enet_event.peer->data)];
 						temp_username = temp_username + " has connected! Say hi!";
 						BroadcastPacket(server, temp_username.c_str());
+
 						break;
 					}
 
 
 					temp_username = users[static_cast<int*>(enet_event.peer->data)];
-
 					message = temp_username + " : " + data_string;
 					
 
@@ -115,11 +110,18 @@ bool Lobby::HostLobby(std::string lobby_ip, std::string lobby_port, std::string 
 
 					break;
 				case ENET_EVENT_TYPE_DISCONNECT:
+					temp_username = users[static_cast<int*>(enet_event.peer->data)];
+					// User must be removed from all users before his data is deleted
+					DeleteUserByUsername(users, temp_username);
+					message = temp_username + " has disconnected!";
+					BroadcastPacket(server, message.c_str());
 					printf("%x:%u disconnected.\n",
 						enet_event.peer->address.host,
 						enet_event.peer->address.port,
 						enet_event.peer->data = NULL
 					);
+					
+
 			}
 		}
 
@@ -163,6 +165,21 @@ bool Lobby::HostLobby(std::string lobby_ip, std::string lobby_port, std::string 
 
 }
 
+// Once the user disconnects, the only way to know it was actually them is 
+// searching for their username
+bool DeleteUserByUsername(std::map<int*,std::string>& users,std::string username) 
+{
+	for (std::pair<int*, std::string> x : users) 
+	{
+		if (x.second == username) 
+		{
+			users.erase(x.first);
+			return true;
+		}
+	}
+	return false;
+}
+
 bool Lobby::JoinLobby(std::string lobby_ip, std::string lobby_port, std::string username, ENetHost* client, ENetEvent& enet_event, ENetPeer* peer){
 
 	sf::RenderWindow lobby_window(sf::VideoMode(800, 1000), username);
@@ -172,12 +189,8 @@ bool Lobby::JoinLobby(std::string lobby_ip, std::string lobby_port, std::string 
 	
 	utility.CheckFontLoaded(text_font, GetCurrentDirectory() + "/8bitfont.ttf");
 
-	
-
-
 	sf::Text current_message_text;
 	std::string current_text_message;
-
 
 	sf::RenderTexture bgTex;
 	bgTex.create(800, 1000);
@@ -276,14 +289,11 @@ bool Lobby::JoinLobby(std::string lobby_ip, std::string lobby_port, std::string 
 				break;
 		}
 	}
-
-
 	return EXIT_SUCCESS;
-
 }
 
 
-
+// All of the messages contained in the text vector get drawn using a positioning multiplier
 void DrawAllMessages(std::vector<sf::Text>& all_messages, sf::RenderWindow& lobby_window) {
 
 	float positioning_multiplier = 30.f;
@@ -303,7 +313,7 @@ void DrawAllMessages(std::vector<sf::Text>& all_messages, sf::RenderWindow& lobb
 	}
 }
 
-
+// -- Whenever a new message is detected, it gets added to the message pool
 void ReceiveMessage(std::vector<std::string>& all_messages, std::vector<sf::Text>& all_texts, std::string received_message, sf::Font& font) {
 	sf::Text message_text;
 	message_text.setFont(font);
@@ -312,8 +322,6 @@ void ReceiveMessage(std::vector<std::string>& all_messages, std::vector<sf::Text
 	// ADD TO MESSAGE POOL
 	all_messages.push_back(received_message);
 	all_texts.push_back(message_text);
-
-
 }
 
 void SendMessage(std::vector<std::string>& all_messages,std::vector<sf::Text>& all_texts, std::string& current_message, sf::Event event, int& max_size_allowed, sf::Font& font, sf::Text& current_message_text, ENetPeer* peer) {
@@ -324,30 +332,13 @@ void SendMessage(std::vector<std::string>& all_messages,std::vector<sf::Text>& a
 
 	if (event.key.code == sf::Keyboard::Enter) {
 
-		
-
 		// WE DO NOT ADD TO TEXT POOL AND SAVE MESSAGE
 		// Reason: the message is broadcasted to all peers, therefore it should not be saved here
-		
-		//sf::Text message_text;
-		//message_text.setFont(font);
-		//// ADD TO TEXT POOL
-		//message_text.setString(current_message);
-		//// ADD TO MESSAGE POOL
-		//all_messages.push_back(current_message);
-		//all_texts.push_back(message_text);
-		//std::cout << all_messages.size() << std::endl;
 
-		// ---------- SEND HERE ---------
-		
 		const char* data = current_message.c_str();
 
 
 		SendPacket(peer, data);
-		
-
-		// -------------------
-
 		// Make current message empty after
 		current_message = "";
 		current_message_text.setString("");
@@ -373,14 +364,6 @@ void SendMessageServer(std::vector<std::string>& all_messages, std::vector<sf::T
 		all_texts.push_back(message_text);
 
 		std::cout << all_messages.size() << std::endl;
-
-		// ---------- SEND HERE ---------
-
-
-		//SendPacket(peer, current_message);
-
-
-		// -------------------
 
 		// Make current message empty after
 		current_message = "";
